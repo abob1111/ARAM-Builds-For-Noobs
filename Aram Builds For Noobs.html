@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARAM Mayhem Build Generator</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a1428; color: #f0e6d2; min-height: 100vh; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; }
+  header { text-align: center; margin-bottom: 2rem; }
+  h1 { font-size: 28px; margin: 0 0 8px; color: #c89b3c; font-weight: 600; letter-spacing: 1px; }
+  .subtitle { color: #a09b8c; font-size: 14px; margin: 0; }
+  .search-section { margin-bottom: 1.5rem; }
+  .search-label { display: block; font-size: 14px; color: #c89b3c; margin-bottom: 8px; font-weight: 500; }
+  #searchInput { width: 100%; padding: 12px 16px; border: 1px solid #463714; border-radius: 6px; font-size: 15px; background: #1e2328; color: #f0e6d2; transition: border-color 0.2s; }
+  #searchInput:focus { outline: none; border-color: #c89b3c; }
+  #championGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .champBtn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px; border: 1px solid #463714; border-radius: 6px; background: #1e2328; cursor: pointer; transition: all 0.2s; color: #f0e6d2; }
+  .champBtn:hover { border-color: #c89b3c; transform: translateY(-2px); }
+  .champBtn img { width: 56px; height: 56px; border-radius: 4px; }
+  .champBtn span { font-size: 11px; text-align: center; font-weight: 500; }
+  .card { background: #1e2328; border: 1px solid #463714; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .selected-champ-header { display: flex; align-items: center; gap: 16px; margin-bottom: 1.25rem; }
+  .selected-champ-header img { width: 72px; height: 72px; border-radius: 8px; border: 2px solid #c89b3c; }
+  .selected-champ-header h2 { margin: 0 0 4px; font-size: 22px; color: #c89b3c; }
+  .selected-champ-header p { margin: 0; color: #a09b8c; font-size: 13px; }
+  #changeBtn { margin-left: auto; padding: 8px 14px; border: 1px solid #463714; border-radius: 4px; background: transparent; color: #a09b8c; cursor: pointer; font-size: 12px; }
+  #changeBtn:hover { border-color: #c89b3c; color: #c89b3c; }
+  .build-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .buildBtn { padding: 14px; border: 1px solid #463714; border-radius: 6px; background: #0a1428; cursor: pointer; font-weight: 600; color: #f0e6d2; font-size: 14px; transition: all 0.2s; }
+  .buildBtn:hover { border-color: #c89b3c; }
+  .buildBtn.active { background: #c89b3c; color: #0a1428; border-color: #c89b3c; }
+  .section-title { color: #c89b3c; font-size: 16px; margin: 1.25rem 0 12px; font-weight: 600; border-bottom: 1px solid #463714; padding-bottom: 6px; }
+  .build-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 0.5rem; }
+  .build-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #0a1428; border: 1px solid #463714; border-radius: 4px; transition: all 0.2s; }
+  .build-item:hover { border-color: #c89b3c; transform: translateY(-1px); }
+  .build-item img { width: 44px; height: 44px; border-radius: 4px; flex-shrink: 0; object-fit: cover; }
+  .build-item .icon-fallback { width: 44px; height: 44px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
+  .build-item .name { font-size: 12px; font-weight: 500; color: #f0e6d2; line-height: 1.3; }
+  .build-item .tier { font-size: 10px; color: #a09b8c; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+  .build-item.prismatic { border-left: 3px solid #c89b3c; }
+  .build-item.prismatic .icon-fallback { background: linear-gradient(135deg, #c89b3c, #f0e6d2); color: #0a1428; }
+  .build-item.gold { border-left: 3px solid #d4a017; }
+  .build-item.gold .icon-fallback { background: #d4a017; color: #0a1428; }
+  .build-item.silver { border-left: 3px solid #a09b8c; }
+  .build-item.silver .icon-fallback { background: #a09b8c; color: #0a1428; }
+  .build-desc { color: #a09b8c; font-size: 13px; margin: 0 0 1.25rem; line-height: 1.5; }
+  .hidden { display: none !important; }
+  .empty-msg { grid-column: 1 / -1; text-align: center; color: #a09b8c; padding: 1rem; font-size: 13px; }
+  .footer { text-align: center; color: #5b5a56; font-size: 11px; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #463714; }
+  @media (max-width: 600px) {
+    .container { padding: 1rem; }
+    h1 { font-size: 22px; }
+    .build-buttons { grid-template-columns: 1fr; }
+    #championGrid { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); }
+    .build-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>ARAM MAYHEM BUILDS</h1>
+    <p class="subtitle">Pick a champion. Pick a build. Win the Howling Abyss.</p>
+  </header>
+  <div class="search-section">
+    <label class="search-label" for="searchInput">Search champion</label>
+    <input id="searchInput" type="text" placeholder="Type a champion name (e.g. Brand, Jax, Sona)...">
+  </div>
+  <div id="championGrid" class="hidden"></div>
+  <div id="selectedChampCard" class="card hidden">
+    <div class="selected-champ-header">
+      <img id="champIcon" src="" alt="">
+      <div>
+        <h2 id="champName"></h2>
+        <p id="champTags"></p>
+      </div>
+      <button id="changeBtn">&larr; Change</button>
+    </div>
+    <div class="build-buttons">
+      <button class="buildBtn" data-build="AP">AP Build</button>
+      <button class="buildBtn" data-build="AD">AD Build</button>
+      <button class="buildBtn" data-build="Tank">Tank Build</button>
+    </div>
+  </div>
+  <div id="buildDetails" class="card hidden">
+    <h3 id="buildTitle" class="section-title" style="margin-top: 0;"></h3>
+    <p id="buildDesc" class="build-desc"></p>
+    <h4 class="section-title">Recommended Augments</h4>
+    <div id="augmentGrid" class="build-grid"></div>
+    <h4 class="section-title">Recommended Items</h4>
+    <div id="itemGrid" class="build-grid"></div>
+  </div>
+  <div class="footer">Made for ARAM enjoyers. Champion & item images from Riot's Data Dragon. Augment icons from League Wiki.</div>
+</div>
+
+<script>
+const CHAMPIONS = [
+  ["Aatrox","Fighter"],["Ahri","Mage"],["Akali","Assassin"],["Akshan","Marksman"],["Alistar","Tank"],["Ambessa","Fighter"],
+  ["Amumu","Tank"],["Anivia","Mage"],["Annie","Mage"],["Aphelios","Marksman"],["Ashe","Marksman"],["Aurelion Sol","Mage"],
+  ["Aurora","Mage"],["Azir","Mage"],["Bard","Support"],["Bel'Veth","Fighter"],["Blitzcrank","Tank"],["Brand","Mage"],
+  ["Braum","Tank"],["Briar","Fighter"],["Caitlyn","Marksman"],["Camille","Fighter"],["Cassiopeia","Mage"],["Cho'Gath","Tank"],
+  ["Corki","Marksman"],["Darius","Fighter"],["Diana","Fighter"],["Dr. Mundo","Tank"],["Draven","Marksman"],["Ekko","Assassin"],
+  ["Elise","Mage"],["Evelynn","Assassin"],["Ezreal","Marksman"],["Fiddlesticks","Mage"],["Fiora","Fighter"],["Fizz","Assassin"],
+  ["Galio","Tank"],["Gangplank","Fighter"],["Garen","Fighter"],["Gnar","Fighter"],["Gragas","Fighter"],["Graves","Marksman"],
+  ["Gwen","Fighter"],["Hecarim","Fighter"],["Heimerdinger","Mage"],["Hwei","Mage"],["Illaoi","Fighter"],["Irelia","Fighter"],
+  ["Ivern","Support"],["Janna","Support"],["Jarvan IV","Fighter"],["Jax","Fighter"],["Jayce","Fighter"],["Jhin","Marksman"],
+  ["Jinx","Marksman"],["K'Sante","Tank"],["Kai'Sa","Marksman"],["Kalista","Marksman"],["Karma","Mage"],["Karthus","Mage"],
+  ["Kassadin","Assassin"],["Katarina","Assassin"],["Kayle","Fighter"],["Kayn","Fighter"],["Kennen","Mage"],["Kha'Zix","Assassin"],
+  ["Kindred","Marksman"],["Kled","Fighter"],["Kog'Maw","Marksman"],["LeBlanc","Assassin"],["Lee Sin","Fighter"],["Leona","Tank"],
+  ["Lillia","Fighter"],["Lissandra","Mage"],["Lucian","Marksman"],["Lulu","Support"],["Lux","Mage"],["Malphite","Tank"],
+  ["Malzahar","Mage"],["Maokai","Tank"],["Master Yi","Assassin"],["Mel","Mage"],["Milio","Support"],["Miss Fortune","Marksman"],
+  ["Mordekaiser","Fighter"],["Morgana","Mage"],["Naafiri","Assassin"],["Nami","Support"],["Nasus","Fighter"],["Nautilus","Tank"],
+  ["Neeko","Mage"],["Nidalee","Assassin"],["Nilah","Fighter"],["Nocturne","Assassin"],["Nunu & Willump","Tank"],["Olaf","Fighter"],
+  ["Orianna","Mage"],["Ornn","Tank"],["Pantheon","Fighter"],["Poppy","Tank"],["Pyke","Support"],["Qiyana","Assassin"],
+  ["Quinn","Marksman"],["Rakan","Support"],["Rammus","Tank"],["Rek'Sai","Fighter"],["Rell","Tank"],["Renata Glasc","Support"],
+  ["Renekton","Fighter"],["Rengar","Assassin"],["Riven","Fighter"],["Rumble","Fighter"],["Ryze","Mage"],["Samira","Marksman"],
+  ["Sejuani","Tank"],["Senna","Marksman"],["Seraphine","Mage"],["Sett","Fighter"],["Shaco","Assassin"],["Shen","Tank"],
+  ["Shyvana","Fighter"],["Singed","Tank"],["Sion","Tank"],["Sivir","Marksman"],["Skarner","Fighter"],["Smolder","Marksman"],
+  ["Sona","Support"],["Soraka","Support"],["Swain","Mage"],["Sylas","Mage"],["Syndra","Mage"],["Tahm Kench","Tank"],
+  ["Taliyah","Mage"],["Talon","Assassin"],["Taric","Support"],["Teemo","Marksman"],["Thresh","Support"],["Tristana","Marksman"],
+  ["Trundle","Fighter"],["Tryndamere","Fighter"],["Twisted Fate","Mage"],["Twitch","Marksman"],["Udyr","Fighter"],["Urgot","Fighter"],
+  ["Varus","Marksman"],["Vayne","Marksman"],["Veigar","Mage"],["Vel'Koz","Mage"],["Vex","Mage"],["Vi","Fighter"],
+  ["Viego","Assassin"],["Viktor","Mage"],["Vladimir","Mage"],["Volibear","Fighter"],["Warwick","Fighter"],["Wukong","Fighter"],
+  ["Xayah","Marksman"],["Xerath","Mage"],["Xin Zhao","Fighter"],["Yasuo","Fighter"],["Yone","Fighter"],["Yorick","Fighter"],
+  ["Yuumi","Support"],["Zac","Tank"],["Zed","Assassin"],["Zeri","Marksman"],["Ziggs","Mage"],["Zilean","Support"],
+  ["Zoe","Mage"],["Zyra","Mage"]
+];
+
+const idMap = {
+  "Wukong":"MonkeyKing","Nunu & Willump":"Nunu","Cho'Gath":"Chogath","Kha'Zix":"Khazix",
+  "Vel'Koz":"Velkoz","Kog'Maw":"KogMaw","LeBlanc":"Leblanc","Dr. Mundo":"DrMundo",
+  "Jarvan IV":"JarvanIV","Lee Sin":"LeeSin","Master Yi":"MasterYi","Miss Fortune":"MissFortune",
+  "Rek'Sai":"RekSai","Twisted Fate":"TwistedFate","Xin Zhao":"XinZhao","Tahm Kench":"TahmKench",
+  "Aurelion Sol":"AurelionSol","Bel'Veth":"Belveth","K'Sante":"KSante","Kai'Sa":"Kaisa",
+  "Renata Glasc":"Renata"
+};
+
+const PATCH = "14.24.1";
+const ITEM_IMG = (id) => `https://ddragon.leagueoflegends.com/cdn/${PATCH}/img/item/${id}.png`;
+
+// Augment icon URL builder. Uses wiki's Special:FilePath which redirects to the actual image.
+// fileName param overrides the auto-generated one (used for Quest_ prefix names).
+function augIcon(name, fileName) {
+  const file = fileName || name.replace(/ /g, '_') + '_ar_augment.png';
+  return `https://wiki.leagueoflegends.com/en-us/Special:FilePath/${encodeURIComponent(file)}`;
+}
+
+function champId(name) { return idMap[name] || name.replace(/[^a-zA-Z]/g, ''); }
+function champIcon(name) { return `https://ddragon.leagueoflegends.com/cdn/${PATCH}/img/champion/${champId(name)}.png`; }
+
+let selectedChamp = null;
+
+const builds = {
+  AP: {
+    desc: 'Ability Power build focused on burst spell damage, penetration, and ability haste. Strong for mages and AP assassins.',
+    augments: [
+      {name: 'Phenomenal Evil', tier: 'gold'},
+      {name: 'Jeweled Gauntlet', tier: 'gold'},
+      {name: 'Magic Missile', tier: 'silver'},
+      {name: 'Infernal Conduit', tier: 'prismatic'},
+      {name: 'Master of Duality', tier: 'gold'},
+      {name: 'Mystic Punch', tier: 'gold'},
+      {name: 'Holy Fire', tier: 'silver'},
+      {name: 'Hat Trick', tier: 'gold'}
+    ],
+    items: [
+      {name: "Luden's Companion", id: "6655"},
+      {name: "Shadowflame", id: "4645"},
+      {name: "Rabadon's Deathcap", id: "3089"},
+      {name: "Void Staff", id: "3135"},
+      {name: "Sorcerer's Shoes", id: "3020"},
+      {name: "Liandry's Torment", id: "6653"},
+      {name: "Zhonya's Hourglass", id: "3157"},
+      {name: "Morellonomicon", id: "3165"}
+    ]
+  },
+  AD: {
+    desc: 'Attack Damage build focused on auto-attack damage, crit chance, and sustained DPS. Strong for marksmen and AD bruisers.',
+    augments: [
+      {name: 'Executioner', tier: 'gold'},
+      {name: 'Apex Inventor', tier: 'gold'},
+      {name: 'Marksmage', tier: 'gold'},
+      {name: 'Big Brain', tier: 'prismatic'},
+      {name: 'Critical Rhythm', tier: 'gold'},
+      {name: 'Glass Cannon', tier: 'gold'},
+      {name: 'Heavy Hitter', tier: 'silver'},
+      {name: 'Fan the Hammer', tier: 'silver'}
+    ],
+    items: [
+      {name: "Kraken Slayer", id: "6672"},
+      {name: "Phantom Dancer", id: "3046"},
+      {name: "Infinity Edge", id: "3031"},
+      {name: "Bloodthirster", id: "3072"},
+      {name: "Lord Dominik's Regards", id: "3036"},
+      {name: "Berserker's Greaves", id: "3006"},
+      {name: "The Collector", id: "6676"},
+      {name: "Rapid Firecannon", id: "3094"}
+    ]
+  },
+  Tank: {
+    desc: 'Full tank build using Steel Your Heart, Goliath, and Tank Engine for maximum durability and frontline presence.',
+    augments: [
+      {name: 'Steel Your Heart', tier: 'gold', file: 'Quest_Steel_Your_Heart_ar_augment.png'},
+      {name: 'Goliath', tier: 'gold'},
+      {name: 'Tank Engine', tier: 'gold'},
+      {name: 'Restart', tier: 'gold'},
+      {name: 'Heavy Hitter', tier: 'silver'},
+      {name: 'Numb to Pain', tier: 'silver'},
+      {name: 'Holy Fire', tier: 'silver'},
+      {name: 'Fallen Aegis', tier: 'silver'}
+    ],
+    items: [
+      {name: "Kaenic Rookern", id: "3211"},
+      {name: "Sunfire Aegis", id: "3068"},
+      {name: "Spirit Visage", id: "3065"},
+      {name: "Thornmail", id: "3075"},
+      {name: "Heartsteel", id: "3084"},
+      {name: "Plated Steelcaps", id: "3047"},
+      {name: "Frozen Heart", id: "3110"},
+      {name: "Warmog's Armor", id: "3083"}
+    ]
+  }
+};
+
+const searchInput = document.getElementById('searchInput');
+const grid = document.getElementById('championGrid');
+const selectedCard = document.getElementById('selectedChampCard');
+const buildDetails = document.getElementById('buildDetails');
+
+function renderGrid(term) {
+  const filtered = CHAMPIONS.filter(c => c[0].toLowerCase().includes(term.toLowerCase())).slice(0, 30);
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty-msg">No champions found</div>';
+  } else {
+    grid.innerHTML = filtered.map(c =>
+      `<button class="champBtn" data-champ="${c[0]}" data-tag="${c[1]}">
+        <img src="${champIcon(c[0])}" alt="${c[0]}" onerror="this.style.opacity=0.3">
+        <span>${c[0]}</span>
+      </button>`
+    ).join('');
+    grid.querySelectorAll('.champBtn').forEach(btn => {
+      btn.addEventListener('click', () => selectChampion(btn.dataset.champ, btn.dataset.tag));
+    });
+  }
+  grid.classList.remove('hidden');
+}
+
+function selectChampion(name, tag) {
+  selectedChamp = { name, tag };
+  grid.classList.add('hidden');
+  searchInput.value = '';
+  selectedCard.classList.remove('hidden');
+  buildDetails.classList.add('hidden');
+  document.getElementById('champName').textContent = name;
+  document.getElementById('champIcon').src = champIcon(name);
+  document.getElementById('champTags').textContent = tag;
+  document.querySelectorAll('.buildBtn').forEach(btn => btn.classList.remove('active'));
+}
+
+function tierLetter(tier) { return tier === 'prismatic' ? 'P' : tier === 'gold' ? 'G' : 'S'; }
+
+function selectBuild(build) {
+  document.querySelectorAll('.buildBtn').forEach(btn => btn.classList.toggle('active', btn.dataset.build === build));
+  const b = builds[build];
+  document.getElementById('buildTitle').textContent = `${selectedChamp.name} \u2014 ${build} Build`;
+  document.getElementById('buildDesc').textContent = b.desc;
+  
+  document.getElementById('augmentGrid').innerHTML = b.augments.map(a => {
+    const iconUrl = augIcon(a.name, a.file);
+    return `<div class="build-item ${a.tier}">
+      <img src="${iconUrl}" alt="${a.name}" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <div class="icon-fallback" style="display:none;">${tierLetter(a.tier)}</div>
+      <div>
+        <div class="name">${a.name}</div>
+        <div class="tier">${a.tier} augment</div>
+      </div>
+    </div>`;
+  }).join('');
+  
+  document.getElementById('itemGrid').innerHTML = b.items.map(i =>
+    `<div class="build-item">
+      <img src="${ITEM_IMG(i.id)}" alt="${i.name}" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <div class="icon-fallback" style="display:none; background:#463714; color:#c89b3c;">?</div>
+      <div>
+        <div class="name">${i.name}</div>
+        <div class="tier">Item</div>
+      </div>
+    </div>`
+  ).join('');
+  buildDetails.classList.remove('hidden');
+}
+
+searchInput.addEventListener('input', (e) => {
+  const term = e.target.value;
+  if (term) renderGrid(term);
+  else grid.classList.add('hidden');
+});
+
+document.getElementById('changeBtn').addEventListener('click', () => {
+  selectedChamp = null;
+  selectedCard.classList.add('hidden');
+  buildDetails.classList.add('hidden');
+  searchInput.focus();
+});
+
+document.querySelectorAll('.buildBtn').forEach(btn => {
+  btn.addEventListener('click', () => selectBuild(btn.dataset.build));
+});
+</script>
+</body>
+</html>
